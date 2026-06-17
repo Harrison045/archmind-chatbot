@@ -1,0 +1,464 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Brand tokens */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-paper: var(--paper);
+  --color-clay: var(--clay);
+  --color-clay-foreground: var(--clay-foreground);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
+  --font-heading: var(--font-fraunces);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Editorial "paper & ink" palette */
+  --paper: oklch(0.985 0.006 83);
+  --ink: oklch(0.17 0.012 55);
+  --ink-soft: oklch(0.235 0.012 55);
+  --clay: oklch(0.595 0.13 41);
+  --clay-foreground: oklch(0.985 0.01 83);
+
+  --background: oklch(0.985 0.006 83);
+  --foreground: oklch(0.18 0.012 55);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.012 55);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.012 55);
+  --primary: oklch(0.2 0.012 55);
+  --primary-foreground: oklch(0.985 0.006 83);
+  --secondary: oklch(0.96 0.008 83);
+  --secondary-foreground: oklch(0.2 0.012 55);
+  --muted: oklch(0.955 0.008 83);
+  --muted-foreground: oklch(0.5 0.012 55);
+  --accent: oklch(0.95 0.01 83);
+  --accent-foreground: oklch(0.2 0.012 55);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.9 0.008 70);
+  --input: oklch(0.9 0.008 70);
+  --ring: oklch(0.595 0.13 41);
+  --chart-1: oklch(0.595 0.13 41);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.17 0.012 55);
+  --foreground: oklch(0.96 0.006 83);
+  --card: oklch(0.205 0.012 55);
+  --card-foreground: oklch(0.96 0.006 83);
+  --popover: oklch(0.205 0.012 55);
+  --popover-foreground: oklch(0.96 0.006 83);
+  --primary: oklch(0.96 0.006 83);
+  --primary-foreground: oklch(0.2 0.012 55);
+  --secondary: oklch(0.27 0.012 55);
+  --secondary-foreground: oklch(0.96 0.006 83);
+  --muted: oklch(0.27 0.012 55);
+  --muted-foreground: oklch(0.7 0.01 70);
+  --accent: oklch(0.27 0.012 55);
+  --accent-foreground: oklch(0.96 0.006 83);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.595 0.13 41);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  ::selection {
+    background: var(--clay);
+    color: var(--clay-foreground);
+  }
+}
+
+/* ============ Brand utilities ============ */
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Drafting grid (light surfaces) */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--ink) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--ink) 7%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Drafting grid (dark surfaces) */
+.bg-grid-dark {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Fine ruled lines */
+.bg-rule-dark {
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 100% 28px;
+}
+
+/* Soft radial fade-out mask for grids */
+.mask-fade {
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, #000 35%, transparent 100%);
+}
+
+/* Film grain overlay */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Crop / registration marks */
+.crop-mark {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: currentColor;
+  opacity: 0.4;
+}
+
+/* ============ Motion ============ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 38s linear infinite;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret-blink {
+  animation: blink 1.05s steps(1) infinite;
+}
+
+/* Mascot — articulated parts (planted on the ground, limbs move) */
+.svg-part {
+  transform-box: fill-box;
+  will-change: transform;
+}
+@keyframes mascotSway {
+  0%, 100% { transform: translateX(-1.5px) rotate(-0.6deg); }
+  50% { transform: translateX(1.5px) rotate(0.6deg); }
+}
+@keyframes mascotHead {
+  0%, 100% { transform: rotate(-2.4deg); }
+  50% { transform: rotate(2.6deg); }
+}
+@keyframes mascotArmL {
+  0%, 100% { transform: rotate(5deg); }
+  50% { transform: rotate(-7deg); }
+}
+@keyframes mascotArmR {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes mascotEar {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-4deg); }
+}
+.anim-sway { animation: mascotSway 6s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-head { animation: mascotHead 5s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-arm-l { animation: mascotArmL 3.7s ease-in-out infinite; transform-origin: 72% 6%; }
+.anim-arm-r { animation: mascotArmR 4.3s ease-in-out infinite; transform-origin: 28% 6%; }
+.anim-ear-l { animation: mascotEar 4.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-ear-r { animation: mascotEar 5.5s ease-in-out infinite reverse; transform-origin: 50% 100%; }
+
+/* one-shot hop on click */
+@keyframes mascotHop {
+  0% { transform: translateY(0) scaleY(1); }
+  22% { transform: translateY(-18px) scaleY(1.07); }
+  52% { transform: translateY(0) scaleY(0.93); }
+  74% { transform: translateY(0) scaleY(1.03); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+.anim-hop {
+  animation: mascotHop 0.6s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+/* head look-at smoothing — pivots at the neck so the head stays attached */
+.mascot-look {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
+/* fox hello wiggle (one-shot on mount) */
+@keyframes foxGreet {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(-9deg); }
+  35% { transform: rotate(7deg); }
+  55% { transform: rotate(-5deg); }
+  75% { transform: rotate(3deg); }
+  100% { transform: rotate(0deg); }
+}
+.fox-greet {
+  animation: foxGreet 1s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+/* chat markdown — keep tables/code inside the bubble (esp. the narrow popup) */
+.chat-md table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.chat-md th,
+.chat-md td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.chat-md pre,
+.chat-md code {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* pupils glide toward the cursor */
+.mascot-pupil {
+  transform-box: fill-box;
+  transition: transform 0.12s ease-out;
+  will-change: transform;
+}
+
+/* ===== living idle behaviours ===== */
+@keyframes mascotBreathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.02); }
+}
+.anim-breathe-loop {
+  animation: mascotBreathe 3.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes mascotEarFlick {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(-8deg); }
+  45% { transform: rotate(4deg); }
+  70% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+.anim-earflick {
+  animation: mascotEarFlick 0.75s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes mascotShake {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(7deg); }
+  40% { transform: rotate(-7deg); }
+  60% { transform: rotate(5deg); }
+  80% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+.anim-shake {
+  animation: mascotShake 0.6s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes mascotWave {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(-32deg); }
+  35% { transform: rotate(-18deg); }
+  55% { transform: rotate(-32deg); }
+  75% { transform: rotate(-20deg); }
+  100% { transform: rotate(0deg); }
+}
+.anim-wave {
+  animation: mascotWave 1.1s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 25% 8%;
+}
+
+@keyframes mascotSniff {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-1px) scale(0.9); }
+  60% { transform: translateY(0) scale(1); }
+  80% { transform: translateY(-1px) scale(0.93); }
+}
+.anim-sniff {
+  animation: mascotSniff 0.55s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* kawaii blink */
+@keyframes mascotBlink {
+  0%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(1); }
+  55% { transform: scaleY(0.08); }
+  65% { transform: scaleY(1); }
+}
+.anim-blink {
+  animation: mascotBlink 0.4s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 50% 45%;
+}
+
+/* bushy tail — gentle constant sway + excited wag */
+@keyframes mascotTail {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(6deg); }
+}
+.anim-tail-loop {
+  animation: mascotTail 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 18% 92%;
+}
+@keyframes mascotTailWag {
+  0%, 100% { transform: rotate(-12deg); }
+  25% { transform: rotate(14deg); }
+  50% { transform: rotate(-12deg); }
+  75% { transform: rotate(14deg); }
+}
+.anim-tailwag {
+  animation: mascotTailWag 0.7s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: 18% 92%;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+.mascot-twinkle {
+  animation: twinkle 2.6s ease-in-out infinite;
+}
+
+@keyframes pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pop {
+  animation: pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-marquee,
+  .caret-blink,
+  .anim-sway,
+  .anim-head,
+  .anim-arm-l,
+  .anim-arm-r,
+  .anim-ear-l,
+  .anim-ear-r,
+  .anim-breathe-loop,
+  .anim-earflick,
+  .anim-shake,
+  .anim-wave,
+  .anim-sniff,
+  .anim-blink,
+  .anim-tail-loop,
+  .anim-tailwag,
+  .fox-greet,
+  .mascot-twinkle,
+  .animate-pop {
+    animation: none !important;
+  }
+}
