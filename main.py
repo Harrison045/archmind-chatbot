@@ -115,6 +115,28 @@ Before sending any substantive answer, confirm:
   [ ] For a design question, did I offer 2-3 real options with tradeoffs?
   [ ] Did I note what needs professional verification?
 
+==================== IMAGE ANALYSIS ====================
+
+When the user sends an image, identify it and give a structured, useful read:
+  - WHAT IT IS: name the object/element and its likely type (e.g. "mid-century
+    lounge chair", "reinforced concrete cantilever stair", "clay roof tile").
+  - INDOOR vs OUTDOOR: state which it is suited to and WHY — materials, weather/
+    UV/moisture resistance, joinery, finish, drainage.
+  - STYLE & MATERIALS: probable style/era and the materials you can infer. Label
+    inferences as inferences; do not state guesses as certain.
+  - WHERE IT FITS: rooms/settings, pairings, and placement advice. For furniture,
+    add ergonomics and proportion notes; for building elements, apply your normal
+    architectural reasoning.
+  - SIMILAR PIECES: suggest 2-3 comparable items described in words (names, types,
+    what to look for). You cannot browse the web or link to live products — describe
+    rather than pretending to have real shopping results or prices.
+  - CARE / CLIMATE: brief care or suitability notes, region-flagged for the user's
+    climate (default warm-humid Ghana) when relevant.
+Stay honest: if you are not sure what something is, say so and give your best read
+with the uncertainty labelled. Apply your usual safety boundaries to anything
+structural or life-safety in an image. If the image is outside architecture / the
+built environment, help briefly, then steer back to your scope.
+
 ==================== SCOPE ====================
 
 In scope: architecture, spatial/urban design, construction, building tech,
@@ -136,10 +158,19 @@ return clean JSON only, no prose, no markdown fences."""
 
 
 def get_client() -> OpenAI:
+    # Prefer a direct Anthropic key if present — talks to Anthropic's OpenAI-
+    # compatible endpoint, bypassing OpenRouter (and its credit system).
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_key and anthropic_key != "your_anthropic_api_key_here":
+        return OpenAI(
+            base_url="https://api.anthropic.com/v1/",
+            api_key=anthropic_key,
+        )
+
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key or api_key == "your_openrouter_api_key_here":
-        print("Error: OPENROUTER_API_KEY is not set in your .env file.")
-        print("Edit .env and add your OpenRouter API key, then run again.")
+        print("Error: no API key set. Add ANTHROPIC_API_KEY or OPENROUTER_API_KEY")
+        print("to your .env file, then run again.")
         sys.exit(1)
     return OpenAI(
         base_url="https://openrouter.ai/api/v1",
@@ -151,13 +182,27 @@ def get_client() -> OpenAI:
     )
 
 
+def get_model() -> str:
+    """Resolve the model id for the active provider. Anthropic's API uses bare
+    ids (claude-sonnet-4-5), while OpenRouter uses prefixed ids (anthropic/…)."""
+    model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4-5")
+    if os.getenv("ANTHROPIC_API_KEY") and model.startswith("anthropic/"):
+        model = model.split("/", 1)[1]
+    return model
+
+
 def iter_chunks(client: OpenAI, messages: list):
     """Yield raw text chunks from the model — used by both terminal and web."""
-    model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4-5")
+    model = get_model()
+    # Cap output tokens. OpenRouter reserves credits for the FULL max_tokens up
+    # front, so an uncapped request (model default can be 64k) fails on a small
+    # balance with a 402. Tune via OPENROUTER_MAX_TOKENS in .env.
+    max_tokens = int(os.getenv("OPENROUTER_MAX_TOKENS", "2048"))
     with client.chat.completions.create(
         model=model,
         messages=messages,
         stream=True,
+        max_tokens=max_tokens,
     ) as stream:
         for chunk in stream:
             delta = chunk.choices[0].delta.content or ""
@@ -178,7 +223,7 @@ def stream_response(client: OpenAI, messages: list) -> str:
 
 def main():
     client = get_client()
-    model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4-5")
+    model = get_model()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     print("=" * 60)
@@ -216,13 +261,13 @@ def main():
             messages.pop()
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000):
-    """Start the FastAPI web server so the Next.js UI can connect."""
+def create_app():
+    """Build the FastAPI app. This is a module-level factory so uvicorn can
+    import it (``main:create_app``) when running with auto-reload."""
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import StreamingResponse
     from pydantic import BaseModel
-    import uvicorn
 
     app = FastAPI(title="ArchMind API")
 
@@ -235,7 +280,9 @@ def serve(host: str = "127.0.0.1", port: int = 8000):
 
     class Message(BaseModel):
         role: str
-        content: str
+        # content is a plain string for text turns, or a list of multimodal
+        # parts (text + image_url) when the user attaches an image.
+        content: str | list
 
     class ChatRequest(BaseModel):
         messages: list[Message]
@@ -246,18 +293,62 @@ def serve(host: str = "127.0.0.1", port: int = 8000):
         messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
             {"role": m.role, "content": m.content} for m in req.messages
         ]
+
+        def safe_stream():
+            """Stream chunks, but turn a mid-stream model failure into a
+            readable message instead of an abrupt dropped connection."""
+            produced = False
+            try:
+                for delta in iter_chunks(client, messages):
+                    produced = True
+                    yield delta
+            except Exception as e:  # upstream timeout, rate limit, abort, etc.
+                print(f"[chat] stream error: {type(e).__name__}: {e}")
+                note = (
+                    "the model timed out before responding."
+                    if not produced
+                    else "the model connection dropped mid-reply."
+                )
+                yield (
+                    f"\n\n⚠️ Sorry — {note} This is common with free OpenRouter "
+                    "models under load. Please try again, or switch "
+                    "`OPENROUTER_MODEL` to a more reliable one."
+                )
+
         return StreamingResponse(
-            iter_chunks(client, messages),
+            safe_stream(),
             media_type="text/plain; charset=utf-8",
         )
 
-    model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4-5")
+    return app
+
+
+def serve(host: str = "127.0.0.1", port: int = 8001, reload: bool = False):
+    """Start the FastAPI web server so the Next.js UI can connect.
+
+    Pass reload=True (CLI: ``--reload``) for nodemon-style auto-restart — the
+    server reloads whenever a ``.py`` file or ``.env`` changes.
+    """
+    import uvicorn
+
+    model = get_model()
     print(f"ArchMind API starting on http://{host}:{port}  |  Model: {model}")
-    uvicorn.run(app, host=host, port=port)
+    if reload:
+        print("Auto-reload ON — saving a code or .env change restarts the server.")
+        uvicorn.run(
+            "main:create_app",
+            factory=True,
+            host=host,
+            port=port,
+            reload=True,
+            reload_includes=[".env"],
+        )
+    else:
+        uvicorn.run(create_app(), host=host, port=port)
 
 
 if __name__ == "__main__":
     if "--serve" in sys.argv:
-        serve()
+        serve(reload="--reload" in sys.argv)
     else:
         main()

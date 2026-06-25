@@ -6,16 +6,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { SendHorizonal, RotateCcw, Loader2, ArrowLeft } from "lucide-react";
+import { SendHorizonal, RotateCcw, Loader2, ArrowLeft, ImagePlus, X } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import FoxAvatar from "@/components/fox-avatar";
 import Link from "next/link";
 import { useArchmindChat } from "@/lib/use-archmind-chat";
+import { useImageAttach } from "@/lib/image";
 
 export default function ChatInterface() {
   const searchParams = useSearchParams();
   const { messages, input, setInput, isLoading, sendMessage, clearChat, bottomRef } =
     useArchmindChat();
+  const img = useImageAttach();
 
   // Prefill from a /chat?q=… deep link (e.g. portfolio "Try this"), only on a fresh thread.
   useEffect(() => {
@@ -24,15 +26,20 @@ export default function ChatInterface() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function send() {
+    sendMessage(input, img.pending ?? undefined);
+    img.clear();
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    sendMessage(input);
+    send();
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      send();
     }
   }
 
@@ -76,7 +83,7 @@ export default function ChatInterface() {
       </header>
 
       {/* Message list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           {messages.length === 0 && (
             <div className="relative flex flex-col items-center justify-center gap-5 py-16 text-center">
@@ -144,26 +151,70 @@ export default function ChatInterface() {
 
       {/* Input area */}
       <div className="border-t border-border bg-paper/90 backdrop-blur-md px-4 py-4 shrink-0">
-        <form
-          onSubmit={handleSubmit}
-          className="max-w-3xl mx-auto flex gap-3 items-end"
-        >
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about architecture, design, codes, materials…"
-            rows={1}
-            className="resize-none min-h-[48px] max-h-40 overflow-y-auto flex-1 text-sm rounded-xl bg-card"
-          />
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            size="icon"
-            className="h-12 w-12 shrink-0 rounded-xl bg-clay text-clay-foreground hover:brightness-110"
-          >
-            <SendHorizonal className="w-4 h-4" />
-          </Button>
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+          {img.pending && (
+            <div className="mb-2.5 flex items-center gap-2.5">
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.pending}
+                  alt="Attachment preview"
+                  className="h-16 w-16 rounded-lg border border-border object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={img.clear}
+                  aria-label="Remove image"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-paper shadow"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Image attached — ask anything about it, or just send.
+              </span>
+            </div>
+          )}
+          <div className="flex gap-3 items-end">
+            <input
+              ref={img.inputRef}
+              type="file"
+              accept="image/*"
+              onChange={img.onFile}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={img.open}
+              disabled={isLoading || img.busy}
+              aria-label="Attach image"
+              className="h-12 w-12 shrink-0 rounded-xl"
+            >
+              {img.busy ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ImagePlus className="w-4 h-4" />
+              )}
+            </Button>
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about architecture — or attach an image (a chair, facade, sketch…)"
+              rows={1}
+              className="resize-none min-h-[48px] max-h-40 overflow-y-auto flex-1 text-sm rounded-xl bg-card"
+            />
+            <Button
+              type="submit"
+              disabled={isLoading || (!input.trim() && !img.pending)}
+              size="icon"
+              className="h-12 w-12 shrink-0 rounded-xl bg-clay text-clay-foreground hover:brightness-110"
+            >
+              <SendHorizonal className="w-4 h-4" />
+            </Button>
+          </div>
         </form>
         <p className="text-center text-[11px] text-muted-foreground mt-2.5">
           ArchMind informs professional judgment — it does not replace a licensed architect&apos;s

@@ -4,11 +4,12 @@ import { FormEvent, KeyboardEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { SendHorizonal, X, RotateCcw, Loader2, Maximize2 } from "lucide-react";
+import { SendHorizonal, X, RotateCcw, Loader2, Maximize2, ImagePlus } from "lucide-react";
 import Link from "next/link";
 import MessageBubble from "@/components/message-bubble";
 import FoxAvatar from "@/components/fox-avatar";
 import { useArchmindChat, isOversizedReply } from "@/lib/use-archmind-chat";
+import { useImageAttach } from "@/lib/image";
 
 const STARTERS = [
   "How should I orient a house on a coastal Accra plot?",
@@ -19,6 +20,7 @@ const STARTERS = [
 export default function MascotChat({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { messages, input, setInput, isLoading, sendMessage, clearChat, bottomRef } =
     useArchmindChat();
+  const img = useImageAttach();
   const router = useRouter();
   const handledRef = useRef<Set<string>>(new Set());
   const seededRef = useRef(false);
@@ -49,15 +51,20 @@ export default function MascotChat({ open, onClose }: { open: boolean; onClose: 
 
   if (!open) return null;
 
+  function send() {
+    sendMessage(input, img.pending ?? undefined);
+    img.clear();
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    sendMessage(input);
+    send();
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      send();
     }
   }
 
@@ -108,7 +115,7 @@ export default function MascotChat({ open, onClose }: { open: boolean; onClose: 
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center gap-4 px-2 py-6 text-center">
             <FoxAvatar size={56} lively greet />
@@ -149,24 +156,69 @@ export default function MascotChat({ open, onClose }: { open: boolean; onClose: 
       {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="flex items-end gap-2 border-t border-border bg-paper/90 px-3 py-3 backdrop-blur-md"
+        className="border-t border-border bg-paper/90 px-3 py-3 backdrop-blur-md"
       >
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask ArchMind…"
-          rows={1}
-          className="max-h-28 min-h-[42px] flex-1 resize-none rounded-xl bg-background text-sm"
-        />
-        <Button
-          type="submit"
-          disabled={isLoading || !input.trim()}
-          size="icon"
-          className="h-[42px] w-[42px] shrink-0 rounded-xl bg-clay text-clay-foreground hover:brightness-110"
-        >
-          <SendHorizonal className="h-4 w-4" />
-        </Button>
+        {img.pending && (
+          <div className="mb-2 flex items-center gap-2">
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.pending}
+                alt="Attachment preview"
+                className="h-12 w-12 rounded-md border border-border object-cover"
+              />
+              <button
+                type="button"
+                onClick={img.clear}
+                aria-label="Remove image"
+                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-paper"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </div>
+            <span className="text-[11px] text-muted-foreground">Image attached</span>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <input
+            ref={img.inputRef}
+            type="file"
+            accept="image/*"
+            onChange={img.onFile}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={img.open}
+            disabled={isLoading || img.busy}
+            aria-label="Attach image"
+            className="h-[42px] w-[42px] shrink-0 rounded-xl"
+          >
+            {img.busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+          </Button>
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask ArchMind, or attach an image…"
+            rows={1}
+            className="max-h-28 min-h-[42px] flex-1 resize-none rounded-xl bg-background text-sm"
+          />
+          <Button
+            type="submit"
+            disabled={isLoading || (!input.trim() && !img.pending)}
+            size="icon"
+            className="h-[42px] w-[42px] shrink-0 rounded-xl bg-clay text-clay-foreground hover:brightness-110"
+          >
+            <SendHorizonal className="h-4 w-4" />
+          </Button>
+        </div>
       </form>
     </div>
   );

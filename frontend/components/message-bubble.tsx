@@ -45,7 +45,19 @@ export default function MessageBubble({ message }: Props) {
         )}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          <div className="space-y-2">
+            {message.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={message.image}
+                alt="Attached"
+                className="max-h-64 w-auto max-w-full rounded-lg border border-paper/20"
+              />
+            )}
+            {message.content && (
+              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            )}
+          </div>
         ) : (
           <div className="chat-md prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-headings:my-2 prose-headings:font-display prose-ul:my-1.5 prose-li:my-0 prose-table:text-xs prose-strong:text-foreground prose-a:text-clay">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
