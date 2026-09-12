@@ -3,6 +3,8 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
+import cache
+
 load_dotenv()
 
 SYSTEM_PROMPT = """You are ArchMind, an expert architectural assistant for architects, students,
@@ -132,45 +134,85 @@ architectural angle if one exists.
 Professional but accessible. Concrete over abstract. Direct recommendations,
 decision stays with the user. Define jargon for non-technical users. Offer
 structured comparisons (tables) for option tradeoffs. For programmatic outputs,
-return clean JSON only, no prose, no markdown fences."""
+return clean JSON only, no prose, no markdown fences.
+
+==================== LENGTH ====================
+
+Default answer length: 2-4 sentences, or up to 4 short bullet points. That
+is the answer — not a preview of one. No restated context, no throat-clearing,
+no closing summary, no "let me know if you want more."
+Only go longer when the user's question is explicitly broad ("explain
+everything about...", "give me a full breakdown"), asks to compare 3+
+options, or asks you to elaborate on a prior short answer. Even then, prefer
+short labeled bullets over prose paragraphs or tables."""
 
 
 def get_client():
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key or api_key == "your_openrouter_api_key_here":
-        print("Error: OPENROUTER_API_KEY is not set in your .env file.")
-        print("Edit .env and add your OpenRouter API key, then run again.")
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key or api_key == "your_groq_api_key_here":
+        print("Error: GROQ_API_KEY is not set in your .env file.")
+        print("Edit .env and add your Groq API key, then run again.")
         sys.exit(1)
     return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
+        base_url="https://api.groq.com/openai/v1",
         api_key=api_key,
-        default_headers={
-            "HTTP-Referer": "https://archmind.local",
-            "X-Title": "ArchMind Chatbot",
-        },
     )
 
 
+MAX_AUTO_CONTINUATIONS = 2
+
+
 def stream_response(client, messages):
-    model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4-5")
+    """Print streaming response to the terminal and return the full text.
+
+    max_tokens is a safety ceiling, not the main brevity control — the system
+    prompt's LENGTH rules keep normal answers well under it. If the model
+    still hits the ceiling mid-thought, we automatically ask it to continue
+    (up to MAX_AUTO_CONTINUATIONS times) so the reply finishes seamlessly.
+    """
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     print("\nArchMind: ", end="", flush=True)
     full_response = ""
-    with client.chat.completions.create(
-        model=model,
-        messages=messages,
-        stream=True,
-    ) as stream:
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            print(delta, end="", flush=True)
-            full_response += delta
+    working_messages = list(messages)
+
+    for attempt in range(MAX_AUTO_CONTINUATIONS + 1):
+        partial = ""
+        finished_by_length = False
+        with client.chat.completions.create(
+            model=model,
+            messages=working_messages,
+            stream=True,
+            max_tokens=700,
+            reasoning_effort="low",
+        ) as stream:
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                print(delta, end="", flush=True)
+                partial += delta
+                if chunk.choices[0].finish_reason == "length":
+                    finished_by_length = True
+
+        full_response += partial
+
+        if not finished_by_length or attempt == MAX_AUTO_CONTINUATIONS:
+            if finished_by_length:
+                note = "\n\n*(Response still cut short — ask me to continue for the rest.)*"
+                print(note, end="", flush=True)
+                full_response += note
+            break
+
+        working_messages = working_messages + [
+            {"role": "assistant", "content": partial},
+            {"role": "user", "content": "Continue exactly where you left off. Do not repeat anything already said."},
+        ]
+
     print("\n")
     return full_response
 
 
 def main():
     client = get_client()
-    model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4-5")
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     print("=" * 60)
@@ -199,10 +241,21 @@ def main():
             print("Conversation cleared.\n")
             continue
 
+        is_fresh_question = len(messages) == 1  # only the system prompt so far
         messages.append({"role": "user", "content": user_input})
+
+        if is_fresh_question:
+            cached = cache.get(user_input)
+            if cached is not None:
+                print(f"\nArchMind (cached): {cached}\n")
+                messages.append({"role": "assistant", "content": cached})
+                continue
+
         try:
             reply = stream_response(client, messages)
             messages.append({"role": "assistant", "content": reply})
+            if is_fresh_question:
+                cache.save(user_input, reply)
         except Exception as e:
             print(f"\nError: {e}\n")
             messages.pop()

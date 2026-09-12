@@ -11,3 +11,10 @@ wheels/
 
 # Environment variables
 .env
+
+# Local question/answer cache
+archmind_cache.db
+
+# Generated RAG data (regenerate with rag/ scripts)
+data/
+test_chroma/

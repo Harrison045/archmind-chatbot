@@ -76,7 +76,7 @@ export default function ChatInterface() {
       </header>
 
       {/* Message list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           {messages.length === 0 && (
             <div className="relative flex flex-col items-center justify-center gap-5 py-16 text-center">
