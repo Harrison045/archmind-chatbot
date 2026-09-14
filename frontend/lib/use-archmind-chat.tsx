@@ -6,6 +6,8 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Data URL of an attached image (user messages only). */
+  image?: string;
 }
 
 export interface ChatApi {
@@ -13,10 +15,15 @@ export interface ChatApi {
   input: string;
   setInput: (v: string) => void;
   isLoading: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, image?: string) => Promise<void>;
   clearChat: () => void;
   bottomRef: React.RefObject<HTMLDivElement | null>;
 }
+
+/** Default ask when the user attaches an image without typing anything. */
+const IMAGE_PROMPT =
+  "What is this? Tell me what it is, whether it belongs indoors or outdoors, " +
+  "its likely style and materials, where it fits, and a few similar pieces.";
 
 /** Single source of truth for the conversation, shared by the popup and /chat. */
 function useChatState(): ChatApi {
@@ -30,13 +37,15 @@ function useChatState(): ChatApi {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function sendMessage(text: string) {
-    if (!text.trim() || isLoading) return;
+  async function sendMessage(text: string, image?: string) {
+    const trimmed = text.trim();
+    if ((!trimmed && !image) || isLoading) return;
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      content: text.trim(),
+      content: trimmed || (image ? IMAGE_PROMPT : ""),
+      image,
     };
 
     const history = [...messages, userMessage];
@@ -54,7 +63,16 @@ function useChatState(): ChatApi {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: history.map(({ role, content }) => ({ role, content })),
+          // Multimodal format for messages with an image, plain string otherwise.
+          messages: history.map((m) => ({
+            role: m.role,
+            content: m.image
+              ? [
+                  { type: "text", text: m.content },
+                  { type: "image_url", image_url: { url: m.image } },
+                ]
+              : m.content,
+          })),
         }),
         signal: abortRef.current.signal,
       });

@@ -56,7 +56,8 @@ uv run main.py
 
 ```bash
 # Terminal 1 — backend API
-uv run main.py --serve       # http://127.0.0.1:8000
+uv run main.py --serve            # normal
+uv run main.py --serve --reload   # dev: auto-restart on .py / .env changes
 
 # Terminal 2 — website
 cd frontend && npm run dev   # http://localhost:3000

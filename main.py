@@ -117,6 +117,28 @@ Before sending any substantive answer, confirm:
   [ ] For a design question, did I offer 2-3 real options with tradeoffs?
   [ ] Did I note what needs professional verification?
 
+==================== IMAGE ANALYSIS ====================
+
+When the user sends an image, identify it and give a structured, useful read:
+  - WHAT IT IS: name the object/element and its likely type (e.g. "mid-century
+    lounge chair", "reinforced concrete cantilever stair", "clay roof tile").
+  - INDOOR vs OUTDOOR: state which it is suited to and WHY — materials, weather/
+    UV/moisture resistance, joinery, finish, drainage.
+  - STYLE & MATERIALS: probable style/era and the materials you can infer. Label
+    inferences as inferences; do not state guesses as certain.
+  - WHERE IT FITS: rooms/settings, pairings, and placement advice. For furniture,
+    add ergonomics and proportion notes; for building elements, apply your normal
+    architectural reasoning.
+  - SIMILAR PIECES: suggest 2-3 comparable items described in words (names, types,
+    what to look for). You cannot browse the web or link to live products — describe
+    rather than pretending to have real shopping results or prices.
+  - CARE / CLIMATE: brief care or suitability notes, region-flagged for the user's
+    climate (default warm-humid Ghana) when relevant.
+Stay honest: if you are not sure what something is, say so and give your best read
+with the uncertainty labelled. Apply your usual safety boundaries to anything
+structural or life-safety in an image. If the image is outside architecture / the
+built environment, help briefly, then steer back to your scope.
+
 ==================== SCOPE ====================
 
 In scope: architecture, spatial/urban design, construction, building tech,
@@ -254,13 +276,13 @@ def main():
             messages.pop()
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000):
-    """Start the FastAPI web server so the Next.js UI can connect."""
+def create_app():
+    """Build the FastAPI app. This is a module-level factory so uvicorn can
+    import it (``main:create_app``) when running with auto-reload."""
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import StreamingResponse
     from pydantic import BaseModel
-    import uvicorn
 
     app = FastAPI(title="ArchMind API")
 
@@ -273,24 +295,23 @@ def serve(host: str = "127.0.0.1", port: int = 8000):
 
     class Message(BaseModel):
         role: str
-        content: str
+        # content is a plain string for text turns, or a list of multimodal
+        # parts (text + image_url) when the user attaches an image.
+        content: str | list
 
     class ChatRequest(BaseModel):
         messages: list[Message]
 
-    def iter_chunks_and_cache(client, messages, question: str):
-        """Wrap iter_chunks to save the full reply to the cache once streaming ends."""
-        full_response = ""
-        for delta in iter_chunks(client, messages):
-            full_response += delta
-            yield delta
-        cache.save(question, full_response)
-
     @app.post("/chat")
     def chat(req: ChatRequest):
-        # Only cache/lookup single-question conversations — with prior
-        # history, the same question text can mean something different.
-        is_fresh_question = len(req.messages) == 1 and req.messages[0].role == "user"
+        # Only cache/lookup single-question conversations with plain-text
+        # content — with prior history, or an image attached, the same
+        # question text can mean something different.
+        is_fresh_question = (
+            len(req.messages) == 1
+            and req.messages[0].role == "user"
+            and isinstance(req.messages[0].content, str)
+        )
         question = req.messages[0].content if is_fresh_question else None
 
         if question:
@@ -306,23 +327,66 @@ def serve(host: str = "127.0.0.1", port: int = 8000):
             {"role": m.role, "content": m.content} for m in req.messages
         ]
 
-        if question:
-            return StreamingResponse(
-                iter_chunks_and_cache(client, messages, question),
-                media_type="text/plain; charset=utf-8",
-            )
+        def safe_stream():
+            """Stream chunks, but turn a mid-stream model failure into a
+            readable message instead of an abrupt dropped connection. Also
+            saves the finished reply to the cache for fresh questions."""
+            produced = False
+            full_response = ""
+            try:
+                for delta in iter_chunks(client, messages):
+                    produced = True
+                    full_response += delta
+                    yield delta
+            except Exception as e:  # upstream timeout, rate limit, abort, etc.
+                print(f"[chat] stream error: {type(e).__name__}: {e}")
+                note = (
+                    "the model timed out before responding."
+                    if not produced
+                    else "the model connection dropped mid-reply."
+                )
+                yield (
+                    f"\n\n⚠️ Sorry — {note} This is common with free-tier "
+                    "models under load. Please try again shortly."
+                )
+                return
+            if question:
+                cache.save(question, full_response)
+
         return StreamingResponse(
-            iter_chunks(client, messages),
+            safe_stream(),
             media_type="text/plain; charset=utf-8",
         )
 
+    return app
+
+
+def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
+    """Start the FastAPI web server so the Next.js UI can connect.
+
+    Pass reload=True (CLI: ``--reload``) for nodemon-style auto-restart — the
+    server reloads whenever a ``.py`` file or ``.env`` changes.
+    """
+    import uvicorn
+
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     print(f"ArchMind API starting on http://{host}:{port}  |  Model: {model}")
-    uvicorn.run(app, host=host, port=port)
+    if reload:
+        print("Auto-reload ON — saving a code or .env change restarts the server.")
+        uvicorn.run(
+            "main:create_app",
+            factory=True,
+            host=host,
+            port=port,
+            reload=True,
+            reload_includes=[".env"],
+        )
+    else:
+        uvicorn.run(create_app(), host=host, port=port)
 
 
 if __name__ == "__main__":
     if "--serve" in sys.argv:
-        serve()
+        serve(reload="--reload" in sys.argv)
     else:
         main()
