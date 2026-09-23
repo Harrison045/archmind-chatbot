@@ -307,6 +307,24 @@ def create_app():
     class ChatRequest(BaseModel):
         messages: list[Message]
 
+    def to_plain_content(content: str | list) -> str:
+        """Flatten multimodal content to plain text for the active model.
+
+        GROQ_MODEL is text-only (no vision-capable model available on this
+        account), so an image part in the history would make Groq reject the
+        ENTIRE request with a 400 — even on a later, unrelated question. Drop
+        the image and note that it couldn't be analyzed instead of failing.
+        """
+        if isinstance(content, str):
+            return content
+        text_parts = [p.get("text", "") for p in content if p.get("type") == "text"]
+        had_image = any(p.get("type") == "image_url" for p in content)
+        text = " ".join(t for t in text_parts if t).strip()
+        if had_image:
+            note = "[The user attached an image, but it can't be analyzed — the current model is text-only.]"
+            text = f"{text}\n\n{note}" if text else note
+        return text
+
     @app.post("/chat")
     def chat(req: ChatRequest):
         # Only cache/lookup single-question conversations with plain-text
@@ -329,7 +347,7 @@ def create_app():
 
         client = get_client()
         messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
-            {"role": m.role, "content": m.content} for m in req.messages
+            {"role": m.role, "content": to_plain_content(m.content)} for m in req.messages
         ]
 
         def safe_stream():
@@ -343,13 +361,15 @@ def create_app():
                     produced = True
                     full_response += delta
                     yield delta
-            except Exception as e:  # upstream timeout, rate limit, abort, etc.
+            except Exception as e:  # upstream timeout, rate limit, bad request, etc.
                 print(f"[chat] stream error: {type(e).__name__}: {e}")
-                note = (
-                    "the model timed out before responding."
-                    if not produced
-                    else "the model connection dropped mid-reply."
-                )
+                status = getattr(e, "status_code", None)
+                if status and 400 <= status < 500:
+                    note = "the request was rejected by the model provider."
+                elif not produced:
+                    note = "the model timed out before responding."
+                else:
+                    note = "the model connection dropped mid-reply."
                 yield (
                     f"\n\n⚠️ Sorry — {note} This is common with free-tier "
                     "models under load. Please try again shortly."
