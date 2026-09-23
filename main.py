@@ -286,9 +286,14 @@ def create_app():
 
     app = FastAPI(title="ArchMind API")
 
+    # Comma-separated list of extra allowed origins (e.g. your deployed
+    # Vercel frontend URL) on top of the local dev server.
+    extra_origins = [
+        o.strip() for o in os.getenv("FRONTEND_URLS", "").split(",") if o.strip()
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        allow_origins=["http://localhost:3000", *extra_origins],
         allow_methods=["POST", "OPTIONS"],
         allow_headers=["*"],
     )
@@ -361,13 +366,18 @@ def create_app():
     return app
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
+def serve(host: str | None = None, port: int | None = None, reload: bool = False):
     """Start the FastAPI web server so the Next.js UI can connect.
 
     Pass reload=True (CLI: ``--reload``) for nodemon-style auto-restart — the
     server reloads whenever a ``.py`` file or ``.env`` changes.
     """
     import uvicorn
+
+    # Render (and most PaaS hosts) assign the port via $PORT and expect the
+    # server to bind 0.0.0.0. Local dev defaults stay 127.0.0.1:8000.
+    host = host or os.getenv("HOST", "127.0.0.1")
+    port = port or int(os.getenv("PORT", "8000"))
 
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     print(f"ArchMind API starting on http://{host}:{port}  |  Model: {model}")
