@@ -148,7 +148,7 @@ export default function HomePage() {
               ["Ghana-aware", "LI 1630 · GS 1207"],
               ["Safety-first", "Hard boundaries"],
               ["Multi-jurisdiction", "IBC · Eurocodes"],
-              ["OpenRouter", "Powered"],
+              ["Groq", "Powered"],
             ].map(([k, v]) => (
               <div key={k} className="bg-ink px-5 py-5">
                 <p className="font-display text-lg">{k}</p>

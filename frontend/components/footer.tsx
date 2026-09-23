@@ -56,7 +56,7 @@ export default function Footer() {
             </div>
             <p className="text-sm text-paper/55 leading-relaxed mt-4 max-w-xs">
               A thinking partner for architects, students, and builders — built with rigour,
-              Ghana-aware by default, and powered by OpenRouter.
+              Ghana-aware by default, and powered by Groq.
             </p>
           </div>
           {cols.map((col) => (

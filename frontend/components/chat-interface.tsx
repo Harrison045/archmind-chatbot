@@ -66,7 +66,7 @@ export default function ChatInterface() {
         <div className="flex items-center gap-3">
           <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
             <span className="w-1.5 h-1.5 rounded-full bg-clay" />
-            OpenRouter
+            Groq
           </span>
           <Separator orientation="vertical" className="h-5" />
           <Button
